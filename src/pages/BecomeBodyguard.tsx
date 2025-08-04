@@ -2,18 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
-import { User, Phone, Mail, Lock, MapPin, IndianRupee, Clock, Upload, Shield, Eye, EyeOff } from 'lucide-react';
+import { User, Phone, Mail, MapPin, IndianRupee, Clock, Upload, Shield } from 'lucide-react';
 
 const BecomeBodyguard: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
     email: '',
-    password: '',
     experience: '',
     hourlyRate: '',
     location: '',
@@ -42,7 +40,7 @@ const BecomeBodyguard: React.FC = () => {
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}.${fileExt}`;
+    const fileName = `${folder}/${auth.uid()}/${Date.now()}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage
       .from('bodyguard-files')
@@ -69,7 +67,6 @@ const BecomeBodyguard: React.FC = () => {
       // Create auth user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
@@ -89,6 +86,9 @@ const BecomeBodyguard: React.FC = () => {
         setLoading(false);
         return;
       }
+
+      // Ensure the client is fully authenticated
+      await supabase.auth.getSession();
 
       // Upload files
       let profilePhotoUrl = null;
@@ -110,7 +110,6 @@ const BecomeBodyguard: React.FC = () => {
           full_name: formData.fullName,
           phone: formData.phone,
           email: formData.email,
-          password: formData.password, // In production, this should be hashed
           profile_photo: profilePhotoUrl,
           experience: parseInt(formData.experience),
           hourly_rate: parseFloat(formData.hourlyRate),
@@ -218,31 +217,6 @@ const BecomeBodyguard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="group">
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        Password *
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          name="password"
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          className="w-full p-3 pl-10 pr-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300"
-                          placeholder="Create a strong password"
-                          required
-                          minLength={6}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-primary"
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
