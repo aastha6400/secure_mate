@@ -65,8 +65,8 @@ const BecomeBodyguard: React.FC = () => {
     setError('');
 
     try {
-      // Create auth user first
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // First, sign up the user
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -77,30 +77,38 @@ const BecomeBodyguard: React.FC = () => {
         }
       });
 
-      if (authError) {
-        setError(authError.message);
+      if (signUpError) {
+        setError(signUpError.message);
         setLoading(false);
         return;
       }
 
-      if (!authData.user) {
+      if (!signUpData.user) {
         setError('Failed to create account');
         setLoading(false);
         return;
       }
 
-      // Wait for the session to be established
-      let retries = 0;
-      let session = null;
-      while (retries < 5 && !session) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { data: sessionData } = await supabase.auth.getSession();
-        session = sessionData.session;
-        retries++;
+      // If there's no session immediately, sign in the user
+      let session = signUpData.session;
+      
+      if (!session) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (signInError) {
+          setError('Account created but sign-in failed. Please try signing in manually.');
+          setLoading(false);
+          return;
+        }
+
+        session = signInData.session;
       }
 
-      if (!session) {
-        setError('Authentication session not established. Please try again.');
+      if (!session || !session.user) {
+        setError('Authentication failed. Please try signing in manually.');
         setLoading(false);
         return;
       }
@@ -110,7 +118,7 @@ const BecomeBodyguard: React.FC = () => {
       let idProofUrl = null;
 
       if (profilePhoto) {
-        profilePhotoUrl = await uploadFile(profilePhoto, 'profiles');
+        profilePhotoUrl = await uploadFile(profilePhoto, `${session.user.id}/profiles`);
         if (!profilePhotoUrl) {
           setError('Failed to upload profile photo. Please try again.');
           setLoading(false);
@@ -119,7 +127,7 @@ const BecomeBodyguard: React.FC = () => {
       }
 
       if (idProof) {
-        idProofUrl = await uploadFile(idProof, 'id-proofs');
+        idProofUrl = await uploadFile(idProof, `${session.user.id}/id-proofs`);
         if (!idProofUrl) {
           setError('Failed to upload ID proof. Please try again.');
           setLoading(false);
@@ -131,7 +139,7 @@ const BecomeBodyguard: React.FC = () => {
       const { error: insertError } = await supabase
         .from('bodyguards')
         .insert({
-          id: authData.user.id,
+          id: session.user.id,
           full_name: formData.fullName,
           phone: formData.phone,
           email: formData.email,
