@@ -41,7 +41,7 @@ const BecomeBodyguard: React.FC = () => {
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${auth.uid()}/${Date.now()}.${fileExt}`;
+    const fileName = `${folder}/${Date.now()}.${fileExt}`;
     
     const { error: uploadError } = await supabase.storage
       .from('bodyguard-files')
@@ -89,8 +89,21 @@ const BecomeBodyguard: React.FC = () => {
         return;
       }
 
-      // Ensure the client is fully authenticated
-      await supabase.auth.getSession();
+      // Wait for the session to be established
+      let retries = 0;
+      let session = null;
+      while (retries < 5 && !session) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData.session;
+        retries++;
+      }
+
+      if (!session) {
+        setError('Authentication session not established. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       // Upload files
       let profilePhotoUrl = null;
@@ -98,10 +111,20 @@ const BecomeBodyguard: React.FC = () => {
 
       if (profilePhoto) {
         profilePhotoUrl = await uploadFile(profilePhoto, 'profiles');
+        if (!profilePhotoUrl) {
+          setError('Failed to upload profile photo. Please try again.');
+          setLoading(false);
+          return;
+        }
       }
 
       if (idProof) {
         idProofUrl = await uploadFile(idProof, 'id-proofs');
+        if (!idProofUrl) {
+          setError('Failed to upload ID proof. Please try again.');
+          setLoading(false);
+          return;
+        }
       }
 
       // Insert bodyguard profile
@@ -121,6 +144,7 @@ const BecomeBodyguard: React.FC = () => {
         });
 
       if (insertError) {
+        console.error('Insert error:', insertError);
         setError(insertError.message);
         setLoading(false);
         return;
@@ -129,6 +153,7 @@ const BecomeBodyguard: React.FC = () => {
       // Redirect to pending page
       navigate('/bodyguard-pending');
     } catch (err) {
+      console.error('Submission error:', err);
       setError('An unexpected error occurred');
       setLoading(false);
     }
