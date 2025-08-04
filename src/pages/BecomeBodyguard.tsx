@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
-import { User, Phone, Mail, MapPin, IndianRupee, Clock, Upload, Shield } from 'lucide-react';
+import { User, Phone, Mail, MapPin, IndianRupee, Clock, Upload, Shield, Lock } from 'lucide-react';
 
 const BecomeBodyguard: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ const BecomeBodyguard: React.FC = () => {
     fullName: '',
     phone: '',
     email: '',
+    password: '',
     experience: '',
     hourlyRate: '',
     location: '',
@@ -67,6 +68,7 @@ const BecomeBodyguard: React.FC = () => {
       // Create auth user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
+        password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
@@ -217,6 +219,24 @@ const BecomeBodyguard: React.FC = () => {
                       </div>
                     </div>
 
+                    <div className="group md:col-span-2">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Password *
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                        <input
+                          type="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className="w-full p-3 pl-10 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300"
+                          placeholder="Create a secure password"
+                          minLength={6}
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
